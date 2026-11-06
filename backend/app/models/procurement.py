@@ -1,0 +1,200 @@
+"""Procurement mappings for existing tenant-scoped CIMS tables."""
+
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    Integer,
+    MetaData,
+    Numeric,
+    String,
+    Table,
+    Text,
+)
+from sqlalchemy.dialects.postgresql import ENUM, UUID
+
+from app.models.inventory import document_kind
+
+metadata = MetaData(schema="cims")
+
+vendors = Table(
+    "vendor",
+    metadata,
+    Column("vendor_id", UUID(as_uuid=True), primary_key=True),
+    Column("tenant_id", UUID(as_uuid=True), nullable=False),
+    Column("code", String),
+    Column("name", Text),
+    Column("legal_name", Text),
+    Column("gstin", String),
+    Column("email", String),
+    Column("phone", Text),
+    Column("tax_treatment", Text),
+    Column("payment_terms_days", Integer),
+    Column("default_currency", String),
+    Column("lead_time_days", Integer),
+    Column("is_active", Boolean),
+    Column("notes", Text),
+    Column("created_at", DateTime(timezone=True)),
+    Column("updated_at", DateTime(timezone=True)),
+)
+
+item_vendors = Table(
+    "item_vendor",
+    metadata,
+    Column("item_vendor_id", UUID(as_uuid=True), primary_key=True),
+    Column("tenant_id", UUID(as_uuid=True), nullable=False),
+    Column("item_id", UUID(as_uuid=True)),
+    Column("vendor_id", UUID(as_uuid=True)),
+    Column("vendor_item_code", Text),
+    Column("unit_price", Numeric(20, 6)),
+    Column("currency", String),
+    Column("min_order_qty", Numeric(18, 4)),
+    Column("lead_time_days", Integer),
+    Column("is_preferred", Boolean),
+)
+
+reorder_rules = Table(
+    "reorder_rule",
+    metadata,
+    Column("reorder_rule_id", UUID(as_uuid=True), primary_key=True),
+    Column("tenant_id", UUID(as_uuid=True), nullable=False),
+    Column("item_id", UUID(as_uuid=True)),
+    Column("location_id", UUID(as_uuid=True)),
+    Column("method", Text),
+    Column("reorder_point", Numeric(18, 4)),
+    Column("reorder_qty", Numeric(18, 4)),
+    Column("max_level", Numeric(18, 4)),
+    Column("par_level", Numeric(18, 4)),
+    Column("preferred_vendor_id", UUID(as_uuid=True)),
+    Column("is_active", Boolean),
+)
+
+document_statuses = Table(
+    "document_status",
+    metadata,
+    Column("tenant_id", UUID(as_uuid=True), primary_key=True),
+    Column("document_kind", document_kind, primary_key=True),
+    Column("code", Text, primary_key=True),
+    Column("name", Text),
+    Column("sort_order", Integer),
+    Column("is_initial", Boolean),
+    Column("is_terminal", Boolean),
+    Column("allows_edit", Boolean),
+)
+
+location_document_rules = Table(
+    "location_document_rule",
+    metadata,
+    Column("tenant_id", UUID(as_uuid=True), primary_key=True),
+    Column("location_type_id", UUID(as_uuid=True), primary_key=True),
+    Column("document_kind", document_kind, primary_key=True),
+    Column("is_allowed", Boolean),
+)
+
+approval_state = ENUM(
+    "NOT_REQUIRED",
+    "PENDING",
+    "APPROVED",
+    "REJECTED",
+    name="approval_state_t",
+    schema="cims",
+    create_type=False,
+)
+
+purchase_orders = Table(
+    "purchase_order",
+    metadata,
+    Column("purchase_order_id", UUID(as_uuid=True), primary_key=True),
+    Column("tenant_id", UUID(as_uuid=True), nullable=False),
+    Column("po_no", Text),
+    Column("document_kind", document_kind),
+    Column("status", Text),
+    Column("vendor_id", UUID(as_uuid=True)),
+    Column("location_id", UUID(as_uuid=True)),
+    Column("currency", String),
+    Column("order_date", Date),
+    Column("expected_date", Date),
+    Column("payment_terms_days", Integer),
+    Column("approval_state", approval_state),
+    Column("approved_by", UUID(as_uuid=True)),
+    Column("approved_at", DateTime(timezone=True)),
+    Column("subtotal", Numeric(20, 4)),
+    Column("discount_total", Numeric(20, 4)),
+    Column("tax_total", Numeric(20, 4)),
+    Column("round_off", Numeric(20, 4)),
+    Column("grand_total", Numeric(20, 4)),
+    Column("notes", Text),
+    Column("sent_at", DateTime(timezone=True)),
+    Column("closed_at", DateTime(timezone=True)),
+    Column("cancelled_at", DateTime(timezone=True)),
+    Column("cancel_reason", Text),
+    Column("created_by", UUID(as_uuid=True)),
+    Column("created_at", DateTime(timezone=True)),
+    Column("updated_at", DateTime(timezone=True)),
+)
+
+purchase_order_lines = Table(
+    "purchase_order_line",
+    metadata,
+    Column("purchase_order_line_id", UUID(as_uuid=True), primary_key=True),
+    Column("tenant_id", UUID(as_uuid=True), nullable=False),
+    Column("purchase_order_id", UUID(as_uuid=True)),
+    Column("line_no", Integer),
+    Column("item_id", UUID(as_uuid=True)),
+    Column("uom_id", UUID(as_uuid=True)),
+    Column("quantity", Numeric(18, 4)),
+    Column("quantity_in_stock_uom", Numeric(18, 4)),
+    Column("unit_price", Numeric(20, 6)),
+    Column("discount_amount", Numeric(20, 4)),
+    Column("tax_rate", Numeric(7, 4)),
+    Column("tax_amount", Numeric(20, 4)),
+    Column("line_total", Numeric(20, 4)),
+    Column("expected_date", Date),
+    Column("received_quantity", Numeric(18, 4)),
+    Column("cancelled_quantity", Numeric(18, 4)),
+)
+
+purchase_receives = Table(
+    "purchase_receive",
+    metadata,
+    Column("purchase_receive_id", UUID(as_uuid=True), primary_key=True),
+    Column("tenant_id", UUID(as_uuid=True), nullable=False),
+    Column("receive_no", Text),
+    Column("document_kind", document_kind),
+    Column("status", Text),
+    Column("purchase_order_id", UUID(as_uuid=True)),
+    Column("vendor_id", UUID(as_uuid=True)),
+    Column("location_id", UUID(as_uuid=True)),
+    Column("received_at", DateTime(timezone=True)),
+    Column("received_by", UUID(as_uuid=True)),
+    Column("total_short_qty", Numeric(18, 4)),
+    Column("total_excess_qty", Numeric(18, 4)),
+    Column("total_damaged_qty", Numeric(18, 4)),
+    Column("has_variance", Boolean),
+    Column("notes", Text),
+    Column("created_by", UUID(as_uuid=True)),
+    Column("created_at", DateTime(timezone=True)),
+    Column("updated_at", DateTime(timezone=True)),
+)
+
+purchase_receive_lines = Table(
+    "purchase_receive_line",
+    metadata,
+    Column("purchase_receive_line_id", UUID(as_uuid=True), primary_key=True),
+    Column("tenant_id", UUID(as_uuid=True), nullable=False),
+    Column("purchase_receive_id", UUID(as_uuid=True)),
+    Column("line_no", Integer),
+    Column("purchase_order_line_id", UUID(as_uuid=True)),
+    Column("item_id", UUID(as_uuid=True)),
+    Column("uom_id", UUID(as_uuid=True)),
+    Column("received_quantity", Numeric(18, 4)),
+    Column("quantity_in_stock_uom", Numeric(18, 4)),
+    Column("short_quantity", Numeric(18, 4)),
+    Column("excess_quantity", Numeric(18, 4)),
+    Column("damaged_quantity", Numeric(18, 4)),
+    Column("unit_cost", Numeric(20, 6)),
+    Column("landed_cost_total", Numeric(20, 4)),
+    Column("ledger_entry_id", BigInteger),
+)
